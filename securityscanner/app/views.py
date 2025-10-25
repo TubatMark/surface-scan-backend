@@ -12,9 +12,13 @@ from .convex_client import ConvexClient
 # Redis connection for rate limiting
 redis_client = redis.from_url(settings.CELERY_BROKER_URL)
 
-@api_view(['POST'])
+@api_view(['POST', 'OPTIONS'])
 def scan_view(request):
     """Initiate a security scan for a website"""
+    # Handle CORS preflight request
+    if request.method == 'OPTIONS':
+        return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+    
     serializer = ScanRequestSerializer(data=request.data)
     
     if not serializer.is_valid():
@@ -102,3 +106,26 @@ def cors_test(request):
         'origin': request.META.get('HTTP_ORIGIN', 'unknown'),
         'method': request.method
     })
+
+@api_view(['GET'])
+def health_check(request):
+    """Health check endpoint for Railway deployment"""
+    try:
+        # Test Redis connection
+        redis_status = "connected"
+        try:
+            redis_client.ping()
+        except Exception as e:
+            redis_status = f"error: {str(e)}"
+        
+        return Response({
+            'status': 'ok',
+            'message': 'Backend is running',
+            'redis': redis_status,
+            'timestamp': str(timezone.now()) if 'timezone' in globals() else 'unknown'
+        })
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': f'Health check failed: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

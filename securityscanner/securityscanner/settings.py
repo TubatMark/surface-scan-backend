@@ -25,12 +25,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-n=0gs0e=p#851-#xy2rb#qo-o(@_x%!r+c4_$bj!)i9&*e5(bn'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-n=0gs0e=p#851-#xy2rb#qo-o(@_x%!r+c4_$bj!)i9&*e5(bn')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = []
+# Railway and Vercel domains
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'surface-scan-backend-production.up.railway.app',
+    'surface-scan-frontend.vercel.app',
+    '.up.railway.app',
+    '.vercel.app'
+]
 
 
 # Application definition
@@ -44,13 +52,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'whitenoise.runserver_nostatic',
     'app',
 ]
 
 MIDDLEWARE = [
-    'app.cors_middleware.CustomCorsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -155,7 +164,7 @@ RATE_LIMIT_PER_MINUTE = 5
 # Scan Configuration
 SCAN_TIMEOUT = 10
 
-# CORS Configuration
+# CORS Configuration for Production
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -163,8 +172,8 @@ CORS_ALLOWED_ORIGINS = [
     "https://surface-scan-backend-production.up.railway.app",
 ]
 
-# Allow all origins for development (be careful in production)
-CORS_ALLOW_ALL_ORIGINS = True
+# Allow all origins for development only
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 # Allow credentials
 CORS_ALLOW_CREDENTIALS = True
@@ -209,4 +218,26 @@ CORS_EXPOSE_HEADERS = [
 ]
 
 # CORS debugging (set to False in production)
-CORS_DEBUG = True
+CORS_DEBUG = os.getenv('CORS_DEBUG', 'True').lower() == 'true'
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# WhiteNoise configuration
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Security settings for production
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
