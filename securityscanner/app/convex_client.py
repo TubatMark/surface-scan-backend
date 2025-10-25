@@ -9,8 +9,9 @@ class ConvexClient:
     def __init__(self):
         self.convex_url = settings.CONVEX_URL
         self.deploy_key = settings.CONVEX_DEPLOY_KEY
-        # Use Redis for development
-        self.redis_client = redis.from_url(settings.CELERY_BROKER_URL)
+        # Use Railway Redis for production
+        redis_url = os.getenv('REDIS_URL', 'redis://default:iutQJARgFdpuVrtOatgLGZueyHlmIakm@redis.railway.internal:6379/0')
+        self.redis_client = redis.from_url(redis_url)
     
     def create_scan(self, job_id, url):
         """Create initial scan record"""

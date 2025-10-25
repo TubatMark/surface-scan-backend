@@ -147,8 +147,8 @@ DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS = ['*']  # Allow all hosts for development
 
 # Celery Configuration
-CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://default:iutQJARgFdpuVrtOatgLGZueyHlmIakm@redis.railway.internal:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://default:iutQJARgFdpuVrtOatgLGZueyHlmIakm@redis.railway.internal:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

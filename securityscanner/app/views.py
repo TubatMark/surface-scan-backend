@@ -1,3 +1,4 @@
+import os
 import uuid
 import redis
 from django.conf import settings
@@ -10,7 +11,8 @@ from .tasks import scan_website_task
 from .convex_client import ConvexClient
 
 # Redis connection for rate limiting
-redis_client = redis.from_url(settings.CELERY_BROKER_URL)
+redis_url = os.getenv('REDIS_URL', 'redis://default:iutQJARgFdpuVrtOatgLGZueyHlmIakm@redis.railway.internal:6379/0')
+redis_client = redis.from_url(redis_url)
 
 @api_view(['POST', 'OPTIONS'])
 def scan_view(request):
