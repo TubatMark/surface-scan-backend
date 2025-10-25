@@ -89,3 +89,16 @@ def status_view(request, job_id):
             {'error': f'Failed to get scan status: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['GET', 'OPTIONS'])
+def cors_test(request):
+    """Test endpoint for CORS debugging"""
+    if request.method == 'OPTIONS':
+        return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+    
+    return Response({
+        'status': 'ok',
+        'message': 'CORS is working',
+        'origin': request.META.get('HTTP_ORIGIN', 'unknown'),
+        'method': request.method
+    })

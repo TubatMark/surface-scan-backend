@@ -48,6 +48,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'app.cors_middleware.CustomCorsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -162,4 +163,50 @@ CORS_ALLOWED_ORIGINS = [
     "https://surface-scan-backend-production.up.railway.app",
 ]
 
+# Allow all origins for development (be careful in production)
+CORS_ALLOW_ALL_ORIGINS = True
+
+# Allow credentials
 CORS_ALLOW_CREDENTIALS = True
+
+# Allowed headers - comprehensive list
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'access-control-allow-origin',
+    'access-control-allow-methods',
+    'access-control-allow-headers',
+]
+
+# Allowed methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Preflight cache time
+CORS_PREFLIGHT_MAX_AGE = 86400
+
+# Expose headers
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'x-requested-with',
+    'accept',
+    'origin',
+    'access-control-request-method',
+    'access-control-request-headers',
+]
+
+# CORS debugging (set to False in production)
+CORS_DEBUG = True
