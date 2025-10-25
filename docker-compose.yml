@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # Redis service for Celery broker and data storage
+  redis:
+    image: redis:7-alpine
+    container_name: security-scanner-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Django backend service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: security-scanner-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=your-django-secret-key-here-change-this-in-production
+      - REDIS_URL=redis://redis:6379/0
+      - CONVEX_URL=
+      - CONVEX_DEPLOY_KEY=
+      - RATE_LIMIT_PER_MINUTE=5
+      - SCAN_TIMEOUT=10
+    volumes:
+      - ./:/app
+      - static_volume:/app/static
+      - media_volume:/app/media
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Celery worker service
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: security-scanner-celery
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=your-django-secret-key-here-change-this-in-production
+      - REDIS_URL=redis://redis:6379/0
+      - CONVEX_URL=
+      - CONVEX_DEPLOY_KEY=
+      - RATE_LIMIT_PER_MINUTE=5
+      - SCAN_TIMEOUT=10
+    volumes:
+      - ./:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A securityscanner worker --loglevel=info --concurrency=2
+    restart: unless-stopped
+
+  # Celery beat service for scheduled tasks
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: security-scanner-celery-beat
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=your-django-secret-key-here-change-this-in-production
+      - REDIS_URL=redis://redis:6379/0
+      - CONVEX_URL=
+      - CONVEX_DEPLOY_KEY=
+    volumes:
+      - ./:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A securityscanner beat --loglevel=info
+    restart: unless-stopped
+
+  # Flower service for Celery monitoring
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: security-scanner-flower
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A securityscanner flower --port=5555
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  static_volume:
+  media_volume:

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Security Scanner Backend
 
 Django REST API backend for the Surface-Level Website Security Scanner application.
@@ -302,3 +303,6 @@ For issues and questions:
 - Create an issue on GitHub
 - Check the troubleshooting section
 - Review the API documentation
+=======
+# surface-scan-backend
+>>>>>>> origin/main

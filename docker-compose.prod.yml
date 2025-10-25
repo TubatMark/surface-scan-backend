@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  # Redis service for Celery broker and data storage
+  redis:
+    image: redis:7-alpine
+    container_name: security-scanner-redis-prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+
+  # Django backend service (Production)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: security-scanner-backend-prod
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      - CONVEX_URL=${CONVEX_URL}
+      - CONVEX_DEPLOY_KEY=${CONVEX_DEPLOY_KEY}
+      - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-10}
+      - SCAN_TIMEOUT=${SCAN_TIMEOUT:-30}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+    volumes:
+      - static_volume:/app/static
+      - media_volume:/app/media
+      - logs_volume:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Celery worker service (Production)
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: security-scanner-celery-prod
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      - CONVEX_URL=${CONVEX_URL}
+      - CONVEX_DEPLOY_KEY=${CONVEX_DEPLOY_KEY}
+      - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-10}
+      - SCAN_TIMEOUT=${SCAN_TIMEOUT:-30}
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A securityscanner worker --loglevel=info --concurrency=4 --max-tasks-per-child=1000
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Celery beat service for scheduled tasks
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: security-scanner-celery-beat-prod
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      - CONVEX_URL=${CONVEX_URL}
+      - CONVEX_DEPLOY_KEY=${CONVEX_DEPLOY_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A securityscanner beat --loglevel=info
+    restart: unless-stopped
+
+  # Flower service for Celery monitoring
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: security-scanner-flower-prod
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A securityscanner flower --port=5555 --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-admin}
+    restart: unless-stopped
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: security-scanner-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_volume:/app/static:ro
+      - media_volume:/app/media:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  static_volume:
+  media_volume:
+  logs_volume:
