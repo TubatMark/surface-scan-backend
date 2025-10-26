@@ -7,7 +7,7 @@ echo "🚀 Starting both Gunicorn and Celery..."
 
 # Start Celery worker in background
 echo "🔄 Starting Celery worker..."
-celery -A securityscanner worker --loglevel=info --concurrency=2 &
+cd securityscanner && celery -A securityscanner worker --loglevel=info --concurrency=2 &
 CELERY_PID=$!
 
 # Function to cleanup on exit
@@ -22,7 +22,7 @@ trap cleanup SIGTERM SIGINT
 
 # Start Gunicorn in foreground
 echo "🌐 Starting Gunicorn server on port ${PORT:-8000}..."
-exec gunicorn securityscanner.wsgi:application \
+cd securityscanner && exec gunicorn securityscanner.wsgi:application \
     --bind 0.0.0.0:${PORT:-8000} \
     --workers 3 \
     --timeout 120 \
