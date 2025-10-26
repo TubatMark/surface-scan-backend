@@ -47,18 +47,17 @@ WORKDIR /app
 # Copy all files to container
 COPY --chown=app:app . .
 
-USER app
+# Make startup scripts executable
+RUN chmod +x railway_start.sh start_both.sh
 
-# Collect static files
-RUN python securityscanner/manage.py collectstatic --noinput
+USER app
 
 # Health check (for Railway)
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/ || exit 1
+    CMD curl -f http://localhost:8000/api/health/ || exit 1
 
 # Expose Django port
 EXPOSE 8000
 
-# Run Gunicorn using Django’s WSGI app
-# Adjusted to reflect that manage.py and wsgi.py are under securityscanner/
-CMD ["gunicorn", "securityscanner.wsgi:application", "--chdir", "securityscanner", "--bind", "0.0.0.0:8000", "--timeout", "120"]
+# Use Railway startup script (starts both Gunicorn and Celery)
+CMD ["./railway_start.sh"]

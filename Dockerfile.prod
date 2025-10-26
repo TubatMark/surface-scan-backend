@@ -63,6 +63,9 @@ WORKDIR /app
 # Copy application code
 COPY --chown=app:app . .
 
+# Make startup scripts executable
+RUN chmod +x railway_start.sh start_both.sh
+
 # Create necessary directories and set permissions
 RUN mkdir -p /app/securityscanner/static /app/securityscanner/media && \
     chown -R app:app /app
@@ -72,10 +75,10 @@ USER app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/admin/ || exit 1
+    CMD curl -f http://localhost:8000/api/health/ || exit 1
 
 # Expose port
 EXPOSE 8000
 
-# Production command with Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "--keep-alive", "2", "--max-requests", "1000", "--max-requests-jitter", "100", "securityscanner.wsgi:application"]
+# Use Railway startup script (starts both Gunicorn and Celery)
+CMD ["./railway_start.sh"]
